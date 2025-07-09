@@ -4,3 +4,6 @@ print(data)
 
 parsed = json.loads(data)
 print(parsed['var1'])
+
+jscomp = json.dumps(parsed)
+print(jscomp)
