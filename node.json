@@ -1,0 +1,222 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "incoming-lead"
+      },
+      "id": "Webhook_Trigger",
+      "name": "Incoming Web Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "field1": "={{ $json[\"name\"] }}",
+          "field2": "={{ $json[\"email\"] }}",
+          "field3": "={{ $json[\"phone\"] }}",
+          "field4": "={{ $json[\"userMessage\"] }}"
+        }
+      },
+      "id": "Set_Fields",
+      "name": "Set & Rename Incoming Lead Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json[\"field4\"] }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "id": "If_User_Message",
+      "name": "IF User Message Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "item.userMessage = item.field4.trim().replace(/\\s+/g,' ');\nreturn item;"
+      },
+      "id": "Clean_Message",
+      "name": "Clean User Message Text",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "resource": "completion",
+        "prompt": "Classify the following user message for intent and urgency:\n\n\"{{$json[\"userMessage\"]}}\"\n\nRespond in JSON with fields: { \"intent\": \"...\", \"urgency\": \"...\" }",
+        "temperature": 0.2
+      },
+      "id": "AI_Classify",
+      "name": "AI Classify Lead Intent & Urgency",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "your_openai_credential_id",
+          "name": "OpenAI Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fields": {
+          "intent": "={{ JSON.parse($json[\"choices\"][0][\"text\"]).intent }}",
+          "urgency": "={{ JSON.parse($json[\"choices\"][0][\"text\"]).urgency }}"
+        }
+      },
+      "id": "Extract_Intent",
+      "name": "Extract Intent & Urgency from AI Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.example.com/property-check",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={ \"propertyDetails\": { \"name\": \"{{$json[\"field1\"]}}\", \"message\": \"{{$json[\"userMessage\"]}}\" } }"
+      },
+      "id": "Property_Check",
+      "name": "Call Property Check API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "item.leadScore = item.matchFound ? 90 : 50;\nreturn item;"
+      },
+      "id": "Calculate_Score",
+      "name": "Calculate Web Lead Score",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "name": "={{ $json[\"field1\"] }}",
+          "email": "={{ $json[\"field2\"] }}",
+          "phone": "={{ $json[\"field3\"] }}",
+          "intent": "={{ $json[\"intent\"] }}",
+          "urgency": "={{ $json[\"urgency\"] }}",
+          "leadScore": "={{ $json[\"leadScore\"] }}"
+        }
+      },
+      "id": "Final_Lead",
+      "name": "Set Final Structured Web Lead Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1850, 300]
+    }
+  ],
+  "connections": {
+    "Incoming Web Lead Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set & Rename Incoming Lead Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set & Rename Incoming Lead Fields": {
+      "main": [
+        [
+          {
+            "node": "IF User Message Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF User Message Valid": {
+      "main": [
+        [
+          {
+            "node": "Clean User Message Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean User Message Text": {
+      "main": [
+        [
+          {
+            "node": "AI Classify Lead Intent & Urgency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Classify Lead Intent & Urgency": {
+      "main": [
+        [
+          {
+            "node": "Extract Intent & Urgency from AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Intent & Urgency from AI Output": {
+      "main": [
+        [
+          {
+            "node": "Call Property Check API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Property Check API": {
+      "main": [
+        [
+          {
+            "node": "Calculate Web Lead Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Web Lead Score": {
+      "main": [
+        [
+          {
+            "node": "Set Final Structured Web Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "Workflow_1_Lead_Qualification"
+}
