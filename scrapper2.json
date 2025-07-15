@@ -1,0 +1,126 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "functionCode": "return [\n  {\n    json: {\n      urls: [\n        \"https://example1.com\",\n        \"http://example2.com\"\n      ]\n    }\n  }\n];"
+      },
+      "id": "Set_Websites",
+      "name": "Set Websites",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "urls",
+        "options": {}
+      },
+      "id": "Item Lists",
+      "name": "Split URLs",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json }}",
+        "responseFormat": "string",
+        "allowUnauthorizedCerts": true
+      },
+      "id": "HTTP_Request",
+      "name": "Fetch HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const url = $json;\nconst html = $json.body;\n\nconst hasSSL = url.startsWith('https://');\nconst hasTitle = /<title>(.*?)<\\/title>/i.test(html);\nconst hasMetaDescription = /<meta name=[\"']description[\"'] content=[\"'].*?[\"']\\s*\\/>/i.test(html);\n\nreturn [{\n  json: {\n    url,\n    hasSSL,\n    hasTitle,\n    hasMetaDescription\n  }\n}];"
+      },
+      "id": "Analyze",
+      "name": "Analyze HTML",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "fileFormat": "csv",
+        "fileName": "site_audit_report.csv"
+      },
+      "id": "Spreadsheet File",
+      "name": "Save CSV",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {},
+      "id": "Manual Trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Websites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Websites": {
+      "main": [
+        [
+          {
+            "node": "Split URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split URLs": {
+      "main": [
+        [
+          {
+            "node": "Fetch HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch HTML": {
+      "main": [
+        [
+          {
+            "node": "Analyze HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze HTML": {
+      "main": [
+        [
+          {
+            "node": "Save CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "local-site-audit"
+}

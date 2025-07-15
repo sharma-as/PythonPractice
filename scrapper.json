@@ -1,0 +1,93 @@
+{
+  "name": "Local Site Audit",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": [
+          {
+            "mode": "everyDay",
+            "hour": 2
+          }
+        ]
+      },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "urls",
+              "value": "https://example1.com,https://example2.com"
+            }
+          ]
+        }
+      },
+      "name": "Set Websites",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1
+      },
+      "name": "SplitInBatches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json[\"url\"] }}",
+        "responseFormat": "string"
+      },
+      "name": "Fetch HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const url = $json[\"url\"];\nconst html = $json[\"body\"];\n\nconst hasSSL = url.startsWith(\"https://\");\nconst hasTitle = /<title>(.*?)<\\/title>/i.test(html);\nconst hasMetaDescription = /<meta name=[\"']description[\"'] content=[\"'].*?[\"']\\s*\\/>/i.test(html);\n\nreturn [{ json: { url, hasSSL, hasTitle, hasMetaDescription } }];"
+      },
+      "name": "Analyze Site",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "fileFormat": "csv",
+        "fileName": "site_audit_report.csv",
+        "dataPropertyName": "data"
+      },
+      "name": "Save Report",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Cron": {
+      "main": [[{ "node": "Set Websites", "type": "main", "index": 0 }]]
+    },
+    "Set Websites": {
+      "main": [[{ "node": "SplitInBatches", "type": "main", "index": 0 }]]
+    },
+    "SplitInBatches": {
+      "main": [
+        [{ "node": "Fetch HTML", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch HTML": {
+      "main": [[{ "node": "Analyze Site", "type": "main", "index": 0 }]]
+    },
+    "Analyze Site": {
+      "main": [[{ "node": "Save Report", "type": "main", "index": 0 }]]
+    }
+  }
+}
